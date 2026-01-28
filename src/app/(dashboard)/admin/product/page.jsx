@@ -31,13 +31,13 @@ export default function ProductsPage() {
         try {
             const { data } = await api.get('/api/categories');
             const allProducts = [];
-            
+
             // Loop semua category & inject category info ke product
             for (const cat of (data.data || data.categories || [])) {
                 try {
                     const res = await api.get(`/api/categories/${cat.id}`);
                     const products = res.data.data?.products || [];
-                    
+
                     // Inject category info ke setiap product
                     const productsWithCategory = products.map(p => ({
                         ...p,
@@ -45,13 +45,13 @@ export default function ProductsPage() {
                         categoryName: cat.name,
                         categoryIcon: cat.icon,
                     }));
-                    
+
                     allProducts.push(...productsWithCategory);
                 } catch (err) {
                     console.error(`Error fetching products for category ${cat.id}:`, err);
                 }
             }
-            
+
             setProducts(allProducts);
         } catch (error) {
             toast.error('Gagal memuat produk');
@@ -106,7 +106,7 @@ export default function ProductsPage() {
             formData.append('categoryId', categoryId);
             formData.append('description', description.trim() || '');
             formData.append('stock', stock);
-            
+
             if (imageFile) {
                 formData.append('image', imageFile);
             }
@@ -188,6 +188,13 @@ export default function ProductsPage() {
             <div className="w-64 bg-white p-4 rounded-lg shadow overflow-y-auto">
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="font-bold text-lg text-black">List Product</h2>
+                    <button
+                        onClick={resetForm}
+                        className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        title="Tambah Product Baru"
+                    >
+                        <Plus size={18} />
+                    </button>
                 </div>
 
                 <div className="space-y-2">
@@ -198,11 +205,10 @@ export default function ProductsPage() {
                             <div
                                 key={product.id}
                                 onClick={() => handleEdit(product)}
-                                className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-colors ${
-                                    isSelected
+                                className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-colors ${isSelected
                                         ? 'bg-blue-100 border-2 border-blue-500'
                                         : 'hover:bg-gray-100 border-2 border-transparent'
-                                }`}
+                                    }`}
                             >
                                 <div className="flex items-center gap-2 flex-1 min-w-0">
                                     {product.imageUrl ? (

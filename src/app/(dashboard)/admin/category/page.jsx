@@ -111,6 +111,13 @@ export default function CategoriesPage() {
             <div className="w-64 bg-white p-4 rounded-lg shadow overflow-y-auto">
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="font-bold text-lg text-black">List Category</h2>
+                    <button
+                        onClick={resetForm}
+                        className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                        title="Tambah Baru"
+                    >
+                        <Plus size={18} />
+                    </button>
                 </div>
 
                 <div className="space-y-2">
