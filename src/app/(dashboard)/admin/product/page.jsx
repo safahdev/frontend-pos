@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import api from '../../../lib/axios';
 import toast from 'react-hot-toast';
-import { Trash2, Plus, Upload, X } from 'lucide-react';
+import { Trash2, Plus, Upload, X, Edit2 } from 'lucide-react';
 
 export default function ProductsPage() {
     const [products, setProducts] = useState([]);
@@ -21,6 +21,7 @@ export default function ProductsPage() {
     const [imageFile, setImageFile] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
     const [isEdit, setIsEdit] = useState(false);
+    const [showForm, setShowForm] = useState(false);
 
     useEffect(() => {
         fetchProducts();
@@ -160,6 +161,7 @@ export default function ProductsPage() {
         setImagePreview(product.imageUrl || null);
         setImageFile(null);
         setIsEdit(true);
+        setShowForm(true);
     };
 
     const resetForm = () => {
@@ -172,6 +174,12 @@ export default function ProductsPage() {
         setImageFile(null);
         setImagePreview(null);
         setIsEdit(false);
+        setShowForm(false);
+    };
+
+    const openNewProductForm = () => {
+        resetForm();
+        setShowForm(true);
     };
 
     if (loading) {
@@ -183,254 +191,256 @@ export default function ProductsPage() {
     }
 
     return (
-        <div className="flex gap-4 h-[calc(100vh-8rem)]">
-            {/* LEFT - Product List */}
-            <div className="w-64 bg-white p-4 rounded-lg shadow overflow-y-auto">
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="font-bold text-lg text-black">List Product</h2>
-                    <button
-                        onClick={resetForm}
-                        className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                        title="Tambah Product Baru"
-                    >
-                        <Plus size={18} />
-                    </button>
-                </div>
-
-                <div className="space-y-2">
-                    {products.map((product) => {
-                        const isSelected = selectedProduct?.id === product.id;
-
-                        return (
-                            <div
-                                key={product.id}
-                                onClick={() => handleEdit(product)}
-                                className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-colors ${isSelected
-                                        ? 'bg-blue-100 border-2 border-blue-500'
-                                        : 'hover:bg-gray-100 border-2 border-transparent'
-                                    }`}
-                            >
-                                <div className="flex items-center gap-2 flex-1 min-w-0">
-                                    {product.imageUrl ? (
-                                        <img
-                                            src={product.imageUrl}
-                                            alt={product.name}
-                                            className="w-10 h-10 rounded object-cover"
-                                        />
-                                    ) : (
-                                        <div className="w-10 h-10 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-400">
-                                            No Img
-                                        </div>
-                                    )}
-                                    <div className="flex-1 min-w-0">
-                                        <p className="font-medium text-black text-sm truncate">{product.name}</p>
-                                        <p className="text-xs text-blue-600 font-semibold">
-                                            Rp {Number(product.price).toLocaleString('id-ID')}
-                                        </p>
-                                        <p className="text-xs text-gray-400">
-                                            {product.categoryName}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleDelete(product.id);
-                                    }}
-                                    className="text-red-500 hover:text-red-700 p-1 ml-2"
-                                    title="Hapus"
-                                >
-                                    <Trash2 size={14} />
-                                </button>
-                            </div>
-                        );
-                    })}
-
-                    {products.length === 0 && (
-                        <p className="text-center text-gray-400 py-8">Belum ada produk</p>
-                    )}
-                </div>
+        <div className="relative">
+            {/* Header */}
+            <div className="mb-6 flex items-center justify-between">
+                <h1 className="text-2xl font-bold text-black">Kelola Produk</h1>
+                <button
+                    onClick={openNewProductForm}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                    <Plus size={20} />
+                    Tambah Produk
+                </button>
             </div>
 
-            {/* CENTER - Preview */}
-            <div className="flex-1 bg-white p-6 rounded-lg shadow flex items-center justify-center">
-                {selectedProduct ? (
-                    <div className="text-center max-w-md">
-                        <div className="inline-block mb-4">
-                            {selectedProduct.imageUrl ? (
+            {/* Product Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {products.map((product) => (
+                    <div
+                        key={product.id}
+                        className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow overflow-hidden group"
+                    >
+                        {/* Product Image */}
+                        <div className="relative h-48 bg-gray-200">
+                            {product.imageUrl ? (
                                 <img
-                                    src={selectedProduct.imageUrl}
-                                    alt={selectedProduct.name}
-                                    className="w-48 h-48 object-cover rounded-lg shadow-md"
+                                    src={product.imageUrl}
+                                    alt={product.name}
+                                    className="w-full h-full object-cover"
                                 />
                             ) : (
-                                <div className="w-48 h-48 bg-gray-200 rounded-lg flex items-center justify-center">
-                                    <span className="text-gray-400">No Image</span>
+                                <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                    <span className="text-sm">No Image</span>
                                 </div>
                             )}
+                            
+                            {/* Stock Badge */}
+                            <div className="absolute top-2 left-2">
+                                <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                                    product.stock > 10 
+                                        ? 'bg-green-500 text-white' 
+                                        : product.stock > 0 
+                                        ? 'bg-yellow-500 text-white' 
+                                        : 'bg-red-500 text-white'
+                                }`}>
+                                    Stock: {product.stock}
+                                </span>
+                            </div>
+
+                            {/* Action Buttons - Show on Hover */}
+                            <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                    onClick={() => handleEdit(product)}
+                                    className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-lg"
+                                    title="Edit"
+                                >
+                                    <Edit2 size={16} />
+                                </button>
+                                <button
+                                    onClick={() => handleDelete(product.id)}
+                                    className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 shadow-lg"
+                                    title="Hapus"
+                                >
+                                    <Trash2 size={16} />
+                                </button>
+                            </div>
                         </div>
-                        <h3 className="text-2xl font-bold mb-2 text-black">{selectedProduct.name}</h3>
-                        <p className="text-blue-600 font-bold text-xl mb-2">
-                            Rp {Number(selectedProduct.price).toLocaleString('id-ID')}
-                        </p>
-                        <p className="text-gray-600 text-sm mb-3">
-                            {selectedProduct.description || 'Tidak ada deskripsi'}
-                        </p>
-                        <div className="flex justify-center gap-4 text-sm">
-                            <span className="px-3 py-1 bg-gray-100 rounded-full text-gray-700">
-                                Stock: {selectedProduct.stock}
-                            </span>
-                            <span className="px-3 py-1 bg-blue-100 rounded-full text-blue-700">
-                                {selectedProduct.categoryName || 'Unknown'}
-                            </span>
+
+                        {/* Product Info */}
+                        <div className="p-4">
+                            <h3 className="font-bold text-black text-lg mb-1 truncate" title={product.name}>
+                                {product.name}
+                            </h3>
+                            
+                            <p className="text-blue-600 font-bold text-xl mb-2">
+                                Rp {Number(product.price).toLocaleString('id-ID')}
+                            </p>
+
+                            <p className="text-gray-600 text-sm mb-3 line-clamp-2 min-h-[2.5rem]">
+                                {product.description || 'Tidak ada deskripsi'}
+                            </p>
+
+                            <div className="flex items-center justify-between">
+                                <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                                    {product.categoryName || 'Unknown'}
+                                </span>
+                            </div>
                         </div>
                     </div>
-                ) : (
-                    <div className="text-center">
+                ))}
+
+                {products.length === 0 && (
+                    <div className="col-span-full text-center py-16">
                         <div className="inline-block p-6 bg-gray-100 rounded-full mb-4">
                             <Plus size={64} className="text-gray-400" />
                         </div>
-                        <p className="text-gray-400">Pilih produk untuk edit<br />atau buat baru</p>
+                        <p className="text-gray-400 text-lg">Belum ada produk</p>
+                        <button
+                            onClick={openNewProductForm}
+                            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                        >
+                            Tambah Produk Pertama
+                        </button>
                     </div>
                 )}
             </div>
 
-            {/* RIGHT - Form */}
-            <div className="w-96 bg-white rounded-lg shadow flex flex-col">
-                <div className="p-6 border-b">
-                    <h2 className="text-xl font-bold text-black">
-                        {isEdit ? 'Edit Product' : 'Tambah Product'}
-                    </h2>
-                </div>
-
-                <div className="flex-1 overflow-y-auto p-6">
-                    {/* Image Upload */}
-                    <div className="mb-4">
-                        <label className="block text-sm font-medium mb-2 text-black">Gambar Produk</label>
-                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                            {imagePreview ? (
-                                <div className="relative">
-                                    <img src={imagePreview} alt="Preview" className="max-h-48 mx-auto rounded" />
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setImagePreview(null);
-                                            setImageFile(null);
-                                        }}
-                                        className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
-                                    >
-                                        <X size={16} />
-                                    </button>
-                                </div>
-                            ) : (
-                                <div>
-                                    <Upload className="mx-auto mb-2 text-gray-400" size={32} />
-                                    <p className="text-sm text-gray-600">Klik untuk upload gambar</p>
-                                </div>
-                            )}
-                            <input
-                                type="file"
-                                accept="image/*"
-                                onChange={handleImageChange}
-                                className="hidden"
-                                id="imageUpload"
-                            />
-                            <label
-                                htmlFor="imageUpload"
-                                className="mt-2 inline-block px-4 py-2 bg-gray-100 rounded cursor-pointer hover:bg-gray-200 text-sm"
-                            >
-                                {imagePreview ? 'Ganti Gambar' : 'Pilih Gambar'}
-                            </label>
-                        </div>
-                    </div>
-
-                    {/* Name Input */}
-                    <div className="mb-4">
-                        <label className="block text-sm font-medium mb-2 text-black">Nama Produk *</label>
-                        <input
-                            type="text"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 text-black rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="Contoh: Nasi Goreng"
-                        />
-                    </div>
-
-                    {/* Category Select */}
-                    <div className="mb-4">
-                        <label className="block text-sm font-medium mb-2 text-black">Kategori *</label>
-                        <select
-                            value={categoryId}
-                            onChange={(e) => setCategoryId(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 text-black rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                            <option value="">Pilih Kategori</option>
-                            {categories.map(cat => (
-                                <option key={cat.id} value={cat.id}>{cat.name}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {/* Price Input */}
-                    <div className="mb-4">
-                        <label className="block text-sm font-medium mb-2 text-black">Harga *</label>
-                        <input
-                            type="number"
-                            value={price}
-                            onChange={(e) => setPrice(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 text-black rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="Contoh: 15000"
-                            min="0"
-                        />
-                    </div>
-
-                    {/* Stock Input */}
-                    <div className="mb-4">
-                        <label className="block text-sm font-medium mb-2 text-black">Stock *</label>
-                        <input
-                            type="number"
-                            value={stock}
-                            onChange={(e) => setStock(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 text-black rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="Contoh: 10"
-                            min="0"
-                        />
-                    </div>
-
-                    {/* Description Textarea */}
-                    <div className="mb-4">
-                        <label className="block text-sm font-medium mb-2 text-black">Deskripsi (Optional)</label>
-                        <textarea
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 text-black rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            rows="3"
-                            placeholder="Deskripsi produk..."
-                        />
-                    </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="border-t p-6">
-                    <div className="flex gap-2">
-                        {isEdit && (
+            {/* Form Modal/Sidebar */}
+            {showForm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
+                        {/* Header */}
+                        <div className="p-6 border-b flex items-center justify-between">
+                            <h2 className="text-xl font-bold text-black">
+                                {isEdit ? 'Edit Product' : 'Tambah Product'}
+                            </h2>
                             <button
                                 onClick={resetForm}
-                                className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+                                className="text-gray-400 hover:text-gray-600"
                             >
-                                Batal
+                                <X size={24} />
                             </button>
-                        )}
-                        <button
-                            onClick={handleSubmit}
-                            className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-                        >
-                            {isEdit ? 'Update' : 'Simpan'}
-                        </button>
+                        </div>
+
+                        {/* Form Content */}
+                        <div className="flex-1 overflow-y-auto p-6">
+                            {/* Image Upload */}
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium mb-2 text-black">Gambar Produk</label>
+                                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                                    {imagePreview ? (
+                                        <div className="relative">
+                                            <img src={imagePreview} alt="Preview" className="max-h-48 mx-auto rounded" />
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setImagePreview(null);
+                                                    setImageFile(null);
+                                                }}
+                                                className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
+                                            >
+                                                <X size={16} />
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div>
+                                            <Upload className="mx-auto mb-2 text-gray-400" size={32} />
+                                            <p className="text-sm text-gray-600">Klik untuk upload gambar</p>
+                                        </div>
+                                    )}
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleImageChange}
+                                        className="hidden"
+                                        id="imageUpload"
+                                    />
+                                    <label
+                                        htmlFor="imageUpload"
+                                        className="mt-2 inline-block px-4 py-2 bg-gray-100 rounded cursor-pointer hover:bg-gray-200 text-sm"
+                                    >
+                                        {imagePreview ? 'Ganti Gambar' : 'Pilih Gambar'}
+                                    </label>
+                                </div>
+                            </div>
+
+                            {/* Name Input */}
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium mb-2 text-black">Nama Produk *</label>
+                                <input
+                                    type="text"
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 text-black rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Contoh: Nasi Goreng"
+                                />
+                            </div>
+
+                            {/* Category Select */}
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium mb-2 text-black">Kategori *</label>
+                                <select
+                                    value={categoryId}
+                                    onChange={(e) => setCategoryId(e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 text-black rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                    <option value="">Pilih Kategori</option>
+                                    {categories.map(cat => (
+                                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Price Input */}
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium mb-2 text-black">Harga *</label>
+                                <input
+                                    type="number"
+                                    value={price}
+                                    onChange={(e) => setPrice(e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 text-black rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Contoh: 15000"
+                                    min="0"
+                                />
+                            </div>
+
+                            {/* Stock Input */}
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium mb-2 text-black">Stock *</label>
+                                <input
+                                    type="number"
+                                    value={stock}
+                                    onChange={(e) => setStock(e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 text-black rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Contoh: 10"
+                                    min="0"
+                                />
+                            </div>
+
+                            {/* Description Textarea */}
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium mb-2 text-black">Deskripsi (Optional)</label>
+                                <textarea
+                                    value={description}
+                                    onChange={(e) => setDescription(e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 text-black rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    rows="3"
+                                    placeholder="Deskripsi produk..."
+                                />
+                            </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="border-t p-6">
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={resetForm}
+                                    className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    onClick={handleSubmit}
+                                    className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                                >
+                                    {isEdit ? 'Update' : 'Simpan'}
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
 
             {/* Delete Confirmation Modal */}
             {deleteId && (

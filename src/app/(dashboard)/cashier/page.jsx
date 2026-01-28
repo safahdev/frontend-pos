@@ -266,22 +266,52 @@ export default function CashierPage() {
                                         setSelectedProduct(product);
                                         setItemNote('');
                                     }}
-                                    className="p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 transition-all hover:shadow-md text-left"
+                                    className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow overflow-hidden text-left"
                                 >
-                                    <div className="h-32 bg-gray-100 rounded mb-3 flex items-center justify-center overflow-hidden">
+                                    {/* Product Image */}
+                                    <div className="relative h-48 bg-gray-200">
                                         {product.imageUrl ? (
                                             <img
                                                 src={product.imageUrl}
                                                 alt={product.name}
-                                                className="h-full w-full object-cover"
+                                                className="w-full h-full object-cover"
                                             />
                                         ) : (
-                                            <span className="text-gray-400 text-sm">No Image</span>
+                                            <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                                <span className="text-sm">No Image</span>
+                                            </div>
+                                        )}
+                                        
+                                        {/* Stock Badge */}
+                                        <div className="absolute top-2 left-2">
+                                            <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                                                product.stock > 10 
+                                                    ? 'bg-green-500 text-white' 
+                                                    : product.stock > 0 
+                                                    ? 'bg-yellow-500 text-white' 
+                                                    : 'bg-red-500 text-white'
+                                            }`}>
+                                                Stock: {product.stock}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Product Info */}
+                                    <div className="p-4">
+                                        <h3 className="font-bold text-black text-lg mb-1 truncate" title={product.name}>
+                                            {product.name}
+                                        </h3>
+                                        
+                                        <p className="text-blue-600 font-bold text-xl mb-2">
+                                            Rp {Number(product.price).toLocaleString('id-ID')}
+                                        </p>
+
+                                        {product.description && (
+                                            <p className="text-gray-600 text-sm line-clamp-2 min-h-[2.5rem]">
+                                                {product.description}
+                                            </p>
                                         )}
                                     </div>
-                                    <h3 className="font-semibold mb-1 line-clamp-2 text-black">{product.name}</h3>
-                                    <p className="text-blue-600 font-bold">Rp {product.price.toLocaleString()}</p>
-                                    <p className="text-xs text-gray-500 mt-1">Stock: {product.stock}</p>
                                 </button>
                             ))}
                         </div>
