@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useEffect, useState, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import api from '../../lib/axios'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
 
-export default function ResetPasswordPage() {
+function ResetPasswordForm() {
     const searchParams = useSearchParams()
     const [formData, setFormData] = useState({
         email: '',
@@ -19,8 +20,8 @@ export default function ResetPasswordPage() {
     const handleRegister = async (e) => {
         e.preventDefault()
 
-        if (formData.password < 6) {
-            toast.error('Password tidak sama!')
+        if (formData.password.length < 6) {
+            toast.error('Password minimal 6 karakter!')
             return
         }
 
@@ -57,7 +58,7 @@ export default function ResetPasswordPage() {
                             alt="POS System"
                             className="mx-auto mb-4 h-12 w-auto"
                         />
-                        <p className="text-black">Register akun Anda</p>
+                        <p className="text-black">Reset Password Anda</p>
                     </div>
 
                     <form onSubmit={handleRegister}>
@@ -79,7 +80,6 @@ export default function ResetPasswordPage() {
                                 className="w-full rounded-lg border border-gray-300  text-black px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="Masukkan OTP (angka)" required />
                         </div>
 
-
                         <button type="submit" disabled={loading} className="w-full rounded-lg bg-blue-600 py-3 font-semibold text-white transition-colors hover:bg-blue-700">{loading ? 'loading...' : 'Reset Password'}</button>
                     </form>
 
@@ -94,5 +94,13 @@ export default function ResetPasswordPage() {
                 <div className="h-full w-full bg-black/30"></div>
             </div>
         </div>
+    )
+}
+
+export default function ResetPasswordPage() {
+    return (
+        <Suspense fallback={<div className="flex min-h-screen items-center justify-center">Loading...</div>}>
+            <ResetPasswordForm />
+        </Suspense>
     )
 }
