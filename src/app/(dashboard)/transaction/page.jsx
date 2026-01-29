@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import api from '../../lib/axios';
 import toast from 'react-hot-toast';
-import { Search, Download, Calendar, Filter, X, FileSpreadsheet, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search, Download, Calendar, Filter, X, FileSpreadsheet, ChevronDown, ChevronUp, Eye } from 'lucide-react';
 
 export default function TransactionPage() {
     const [transactions, setTransactions] = useState([]);
@@ -22,6 +22,11 @@ export default function TransactionPage() {
     const [exportStartDate, setExportStartDate] = useState('');
     const [exportEndDate, setExportEndDate] = useState('');
     const [showExportModal, setShowExportModal] = useState(false);
+
+    // Detail Modal states
+    const [showDetailModal, setShowDetailModal] = useState(false);
+    const [selectedTransaction, setSelectedTransaction] = useState(null);
+    const [loadingDetail, setLoadingDetail] = useState(false);
 
     useEffect(() => {
         fetchCategories();
@@ -47,6 +52,14 @@ export default function TransactionPage() {
             if (orderType) params.orderType = orderType;
 
             const { data } = await api.get('/api/reports/transaction', { params });
+            
+            // Debug: Log response structure
+            console.log('API Response:', data);
+            console.log('Transactions data:', data.data);
+            if (data.data && data.data.length > 0) {
+                console.log('First transaction structure:', data.data[0]);
+            }
+            
             setTransactions(data.data || []);
         } catch (error) {
             toast.error('Gagal memuat transaksi');
@@ -56,11 +69,63 @@ export default function TransactionPage() {
         }
     };
 
+    const fetchTransactionDetail = async (transactionId) => {
+        setLoadingDetail(true);
+        try {
+            const { data } = await api.get(`/api/transactions/${transactionId}`);
+            setSelectedTransaction(data.data);
+            setShowDetailModal(true);
+        } catch (error) {
+            toast.error('Gagal memuat detail transaksi');
+            console.error(error);
+        } finally {
+            setLoadingDetail(false);
+        }
+    };
+
+    const handleViewDetail = (transaction) => {
+        console.log('=== handleViewDetail called ===');
+        console.log('Received transaction:', transaction);
+        console.log('Type of transaction:', typeof transaction);
+        console.log('Transaction keys:', Object.keys(transaction));
+        
+        // Cari ID yang valid dari transaction object
+        let transactionId = transaction.id || transaction.transactionId || transaction.orderId;
+        
+        // Jika tidak ada ID, coba extract dari orderCode (format: "ORDR#123" atau "ORDR# 123")
+        if (!transactionId && transaction.orderCode) {
+            const match = transaction.orderCode.match(/ORDR#\s*(\d+)/);
+            if (match && match[1]) {
+                transactionId = parseInt(match[1]);
+                console.log('Extracted ID from orderCode:', transactionId);
+            }
+        }
+        
+        console.log('Final transactionId:', transactionId);
+        
+        if (!transactionId) {
+            toast.error('ID transaksi tidak ditemukan');
+            console.error('Transaction object:', transaction);
+            return;
+        }
+        
+        fetchTransactionDetail(transactionId);
+    };
+
+    const closeDetailModal = () => {
+        setShowDetailModal(false);
+        setSelectedTransaction(null);
+    };
+
     // Group transactions by customer name and date
     const groupedTransactions = useMemo(() => {
         const groups = {};
         
+        console.log('Grouping transactions:', transactions);
+        
         transactions.forEach(transaction => {
+            console.log('Processing transaction:', transaction);
+            
             const customerName = transaction.customerName || 'Unknown';
             const orderDate = new Date(transaction.orderDate).toDateString();
             const key = `${customerName}_${orderDate}`;
@@ -76,6 +141,7 @@ export default function TransactionPage() {
                 };
             }
             
+            // Store the entire transaction object
             groups[key].transactions.push(transaction);
             groups[key].totalCount++;
         });
@@ -164,11 +230,28 @@ export default function TransactionPage() {
         });
     };
 
+    const formatCurrency = (amount) => {
+        return new Intl.NumberFormat('id-ID', {
+            style: 'currency',
+            currency: 'IDR',
+            minimumFractionDigits: 0
+        }).format(amount);
+    };
+
     const getOrderTypeBadge = (type) => {
         if (type === 'dine_in') {
             return <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">Dine In</span>;
         }
         return <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">Take Away</span>;
+    };
+
+    const getPaymentStatusBadge = (status) => {
+        if (status === 'paid') {
+            return <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">Paid</span>;
+        } else if (status === 'pending') {
+            return <span className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-semibold">Pending</span>;
+        }
+        return <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-semibold">Failed</span>;
     };
 
     return (
@@ -343,12 +426,9 @@ export default function TransactionPage() {
                                         const isExpanded = expandedCustomers.has(groupKey);
 
                                         return (
-                                            <>
+                                            <React.Fragment key={groupKey}>
                                                 {/* Main Row - Grouped */}
-                                                <tr
-                                                    key={groupKey}
-                                                    className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
-                                                >
+                                                <tr className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                                                     <td className="py-4 px-6 text-gray-600">{index + 1}</td>
                                                     <td className="py-4 px-6 text-black font-medium">
                                                         {group.customerName}
@@ -399,28 +479,53 @@ export default function TransactionPage() {
                                                                         <tr>
                                                                             <th className="text-left py-2 px-4 text-xs font-semibold text-gray-600">Order Code</th>
                                                                             <th className="text-left py-2 px-4 text-xs font-semibold text-gray-600">Time</th>
+                                                                            <th className="text-left py-2 px-4 text-xs font-semibold text-gray-600">Detail</th>
                                                                         </tr>
                                                                     </thead>
                                                                     <tbody>
-                                                                        {group.transactions.map((transaction) => (
-                                                                            <tr key={transaction.orderCode} className="border-t border-gray-200">
-                                                                                <td className="py-2 px-4">
-                                                                                    <span className="font-semibold text-blue-600 text-sm">
-                                                                                        {transaction.orderCode}
-                                                                                    </span>
-                                                                                </td>
-                                                                                <td className="py-2 px-4 text-gray-600 text-sm">
-                                                                                    {formatDate(transaction.orderDate)}
-                                                                                </td>
-                                                                            </tr>
-                                                                        ))}
+                                                                        {group.transactions.map((transaction, txIndex) => {
+                                                                            // Debug full transaction object
+                                                                            console.log(`Transaction ${txIndex}:`, transaction);
+                                                                            
+                                                                            // Handle case where transaction might be undefined or null
+                                                                            if (!transaction) {
+                                                                                console.warn('Empty transaction at index:', txIndex);
+                                                                                return null;
+                                                                            }
+                                                                            
+                                                                            return (
+                                                                                <tr key={`${groupKey}-${txIndex}`} className="border-t border-gray-200">
+                                                                                    <td className="py-2 px-4">
+                                                                                        <span className="font-semibold text-blue-600 text-sm">
+                                                                                            {transaction.orderCode || 'N/A'}
+                                                                                        </span>
+                                                                                    </td>
+                                                                                    <td className="py-2 px-4 text-gray-600 text-sm">
+                                                                                        {transaction.orderDate ? formatDate(transaction.orderDate) : 'N/A'}
+                                                                                    </td>
+                                                                                    <td className="py-2 px-4">
+                                                                                        <button
+                                                                                            onClick={() => {
+                                                                                                console.log('Button clicked, transaction:', transaction);
+                                                                                                handleViewDetail(transaction);
+                                                                                            }}
+                                                                                            disabled={loadingDetail}
+                                                                                            className="flex items-center gap-1 px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors text-xs disabled:opacity-50"
+                                                                                        >
+                                                                                            <Eye size={14} />
+                                                                                            View
+                                                                                        </button>
+                                                                                    </td>
+                                                                                </tr>
+                                                                            );
+                                                                        })}
                                                                     </tbody>
                                                                 </table>
                                                             </div>
                                                         </td>
                                                     </tr>
                                                 )}
-                                            </>
+                                            </React.Fragment>
                                         );
                                     })}
                                 </tbody>
@@ -531,6 +636,110 @@ export default function TransactionPage() {
                                 <Download size={18} />
                                 Export
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Transaction Detail Modal */}
+            {showDetailModal && selectedTransaction && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                        {/* Modal Header */}
+                        <div className="p-6 border-b flex items-center justify-between sticky top-0 bg-white">
+                            <h2 className="text-xl font-bold text-black">Transaction Detail</h2>
+                            <button
+                                onClick={closeDetailModal}
+                                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                            >
+                                <X size={20} className="text-gray-600" />
+                            </button>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="p-6">
+                            {/* Transaction Info */}
+                            <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <p className="text-xs text-gray-500 mb-1">Order Date</p>
+                                        <p className="text-sm font-medium text-black">
+                                            {formatDate(selectedTransaction.createdAt)}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-gray-500 mb-1">Customer Name</p>
+                                        <p className="text-sm font-medium text-black">{selectedTransaction.customerName}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-gray-500 mb-1">Order Type</p>
+                                        <div>{getOrderTypeBadge(selectedTransaction.orderType)}</div>
+                                    </div>
+                                    {selectedTransaction.tableNumber && (
+                                        <div>
+                                            <p className="text-xs text-gray-500 mb-1">Table Number</p>
+                                            <p className="text-sm font-medium text-black">Meja {selectedTransaction.tableNumber}</p>
+                                        </div>
+                                    )}
+                                    <div>
+                                        <p className="text-xs text-gray-500 mb-1">Payment Method</p>
+                                        <p className="text-sm font-medium text-black capitalize">
+                                            {selectedTransaction.paymentMethod}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-gray-500 mb-1">Payment Status</p>
+                                        <div>{getPaymentStatusBadge(selectedTransaction.paymentStatus)}</div>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-gray-500 mb-1">Cashier</p>
+                                        <p className="text-sm font-medium text-black">{selectedTransaction.user?.username || '-'}</p>
+                                    </div>
+                                </div>
+                                {/* {selectedTransaction.note && (
+                                    <div className="mt-4 pt-4 border-t border-gray-200">
+                                        <p className="text-xs text-gray-500 mb-1">Note</p>
+                                        <p className="text-sm text-black">{selectedTransaction.note}</p>
+                                    </div>
+                                )} */}
+                            </div>
+
+                            {/* Order Items */}
+                            <div className="mb-6">
+                                <h3 className="text-lg font-bold text-black mb-4">Order Items</h3>
+                                <div className="space-y-3">
+                                    {selectedTransaction.transactionDetails?.map((detail) => (
+                                        <div
+                                            key={detail.id}
+                                            className="bg-white border border-gray-200 rounded-lg p-4"
+                                        >
+                                            <div className="flex items-start justify-between">
+                                                <div className="flex-1">
+                                                    <h4 className="font-semibold text-black">{detail.productName}</h4>
+                                                    <p className="text-sm text-gray-600 mt-1">
+                                                        {detail.quantity} x {formatCurrency(detail.price)}
+                                                    </p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="font-bold text-black">
+                                                        {formatCurrency(detail.subtotal)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Payment Summary */}
+                            <div className="bg-gray-50 rounded-lg p-4 border-2 border-gray-200">
+                                <div className="flex items-center justify-between text-lg">
+                                    <span className="font-bold text-black">Total</span>
+                                    <span className="font-bold text-black text-xl">
+                                        {formatCurrency(selectedTransaction.totalAmount)}
+                                    </span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
