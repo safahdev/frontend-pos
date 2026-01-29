@@ -1,15 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import api from '../../lib/axios';
 import toast from 'react-hot-toast';
-import { Search, Download, Calendar, Filter, X, FileSpreadsheet } from 'lucide-react';
+import { Search, Download, Calendar, Filter, X, FileSpreadsheet, ChevronDown, ChevronUp } from 'lucide-react';
 
 export default function TransactionPage() {
     const [transactions, setTransactions] = useState([]);
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(false);
     const [showFilters, setShowFilters] = useState(false);
+    const [expandedCustomers, setExpandedCustomers] = useState(new Set());
 
     // Filter states
     const [startDate, setStartDate] = useState('');
@@ -55,6 +56,46 @@ export default function TransactionPage() {
         }
     };
 
+    // Group transactions by customer name and date
+    const groupedTransactions = useMemo(() => {
+        const groups = {};
+        
+        transactions.forEach(transaction => {
+            const customerName = transaction.customerName || 'Unknown';
+            const orderDate = new Date(transaction.orderDate).toDateString();
+            const key = `${customerName}_${orderDate}`;
+            
+            if (!groups[key]) {
+                groups[key] = {
+                    customerName,
+                    orderDate: transaction.orderDate,
+                    category: transaction.category,
+                    orderType: transaction.orderType,
+                    transactions: [],
+                    totalCount: 0
+                };
+            }
+            
+            groups[key].transactions.push(transaction);
+            groups[key].totalCount++;
+        });
+        
+        // Convert to array and sort by date (newest first)
+        return Object.values(groups).sort((a, b) => 
+            new Date(b.orderDate) - new Date(a.orderDate)
+        );
+    }, [transactions]);
+
+    const toggleCustomerExpanded = (key) => {
+        const newExpanded = new Set(expandedCustomers);
+        if (newExpanded.has(key)) {
+            newExpanded.delete(key);
+        } else {
+            newExpanded.add(key);
+        }
+        setExpandedCustomers(newExpanded);
+    };
+
     const handleSearch = () => {
         fetchTransactions();
         setShowFilters(false);
@@ -85,7 +126,6 @@ export default function TransactionPage() {
                 responseType: 'blob'
             });
 
-            // Create download link
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement('a');
             link.href = url;
@@ -112,6 +152,15 @@ export default function TransactionPage() {
             year: 'numeric',
             hour: '2-digit',
             minute: '2-digit'
+        });
+    };
+
+    const formatDateOnly = (dateString) => {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('id-ID', {
+            day: '2-digit',
+            month: 'long',
+            year: 'numeric'
         });
     };
 
@@ -267,7 +316,7 @@ export default function TransactionPage() {
                 </div>
             )}
 
-            {/* Transactions Table */}
+            {/* Grouped Transactions Table */}
             <div className="bg-white rounded-lg shadow overflow-hidden">
                 {loading ? (
                     <div className="text-center py-12">
@@ -280,46 +329,105 @@ export default function TransactionPage() {
                                 <thead className="bg-gray-50">
                                     <tr>
                                         <th className="text-left py-4 px-6 font-semibold text-gray-700">No</th>
-                                        <th className="text-left py-4 px-6 font-semibold text-gray-700">Order Code</th>
                                         <th className="text-left py-4 px-6 font-semibold text-gray-700">Customer Name</th>
+                                        <th className="text-left py-4 px-6 font-semibold text-gray-700">Order Date</th>
                                         <th className="text-left py-4 px-6 font-semibold text-gray-700">Category</th>
                                         <th className="text-left py-4 px-6 font-semibold text-gray-700">Order Type</th>
-                                        <th className="text-left py-4 px-6 font-semibold text-gray-700">Order Date</th>
+                                        <th className="text-left py-4 px-6 font-semibold text-gray-700">Transactions</th>
+                                        <th className="text-left py-4 px-6 font-semibold text-gray-700">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {transactions.map((transaction, index) => (
-                                        <tr
-                                            key={transaction.orderCode}
-                                            className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
-                                        >
-                                            <td className="py-4 px-6 text-gray-600">{index + 1}</td>
-                                            <td className="py-4 px-6">
-                                                <span className="font-semibold text-blue-600">
-                                                    {transaction.orderCode}
-                                                </span>
-                                            </td>
-                                            <td className="py-4 px-6 text-black font-medium">
-                                                {transaction.customerName}
-                                            </td>
-                                            <td className="py-4 px-6">
-                                                <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold capitalize">
-                                                    {transaction.category}
-                                                </span>
-                                            </td>
-                                            <td className="py-4 px-6">
-                                                {getOrderTypeBadge(transaction.orderType)}
-                                            </td>
-                                            <td className="py-4 px-6 text-gray-600 text-sm">
-                                                {formatDate(transaction.orderDate)}
-                                            </td>
-                                        </tr>
-                                    ))}
+                                    {groupedTransactions.map((group, index) => {
+                                        const groupKey = `${group.customerName}_${new Date(group.orderDate).toDateString()}`;
+                                        const isExpanded = expandedCustomers.has(groupKey);
+
+                                        return (
+                                            <>
+                                                {/* Main Row - Grouped */}
+                                                <tr
+                                                    key={groupKey}
+                                                    className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                                                >
+                                                    <td className="py-4 px-6 text-gray-600">{index + 1}</td>
+                                                    <td className="py-4 px-6 text-black font-medium">
+                                                        {group.customerName}
+                                                    </td>
+                                                    <td className="py-4 px-6 text-gray-600 text-sm">
+                                                        {formatDateOnly(group.orderDate)}
+                                                    </td>
+                                                    <td className="py-4 px-6">
+                                                        <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold capitalize">
+                                                            {group.category}
+                                                        </span>
+                                                    </td>
+                                                    <td className="py-4 px-6">
+                                                        {getOrderTypeBadge(group.orderType)}
+                                                    </td>
+                                                    <td className="py-4 px-6">
+                                                        <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-bold">
+                                                            {group.totalCount} order{group.totalCount > 1 ? 's' : ''}
+                                                        </span>
+                                                    </td>
+                                                    <td className="py-4 px-6">
+                                                        <button
+                                                            onClick={() => toggleCustomerExpanded(groupKey)}
+                                                            className="flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm"
+                                                        >
+                                                            {isExpanded ? (
+                                                                <>
+                                                                    <ChevronUp size={16} />
+                                                                    Hide
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <ChevronDown size={16} />
+                                                                    Details
+                                                                </>
+                                                            )}
+                                                        </button>
+                                                    </td>
+                                                </tr>
+
+                                                {/* Expanded Details */}
+                                                {isExpanded && (
+                                                    <tr>
+                                                        <td colSpan="7" className="bg-gray-50 p-0">
+                                                            <div className="p-4">
+                                                                <table className="w-full">
+                                                                    <thead className="bg-white">
+                                                                        <tr>
+                                                                            <th className="text-left py-2 px-4 text-xs font-semibold text-gray-600">Order Code</th>
+                                                                            <th className="text-left py-2 px-4 text-xs font-semibold text-gray-600">Time</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        {group.transactions.map((transaction) => (
+                                                                            <tr key={transaction.orderCode} className="border-t border-gray-200">
+                                                                                <td className="py-2 px-4">
+                                                                                    <span className="font-semibold text-blue-600 text-sm">
+                                                                                        {transaction.orderCode}
+                                                                                    </span>
+                                                                                </td>
+                                                                                <td className="py-2 px-4 text-gray-600 text-sm">
+                                                                                    {formatDate(transaction.orderDate)}
+                                                                                </td>
+                                                                            </tr>
+                                                                        ))}
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>
 
-                        {transactions.length === 0 && (
+                        {groupedTransactions.length === 0 && (
                             <div className="text-center py-12">
                                 <div className="inline-block p-6 bg-gray-100 rounded-full mb-4">
                                     <Search size={48} className="text-gray-400" />
@@ -332,10 +440,12 @@ export default function TransactionPage() {
                         )}
 
                         {/* Summary Footer */}
-                        {transactions.length > 0 && (
+                        {groupedTransactions.length > 0 && (
                             <div className="bg-gray-50 px-6 py-4 border-t">
                                 <p className="text-sm text-gray-600">
-                                    Total: <span className="font-bold text-black">{transactions.length}</span> transaksi
+                                    Total: <span className="font-bold text-black">{groupedTransactions.length}</span> customer groups
+                                    <span className="mx-2">|</span>
+                                    <span className="font-bold text-black">{transactions.length}</span> total transactions
                                 </p>
                             </div>
                         )}
