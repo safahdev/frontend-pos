@@ -59,7 +59,7 @@ export default function DashboardLayout({ children }) {
                 </main>
             </div>
 
-            <Toaster position="top-right" />
+            {/* <Toaster position="top-right" /> */}
         </div>
     );
 }

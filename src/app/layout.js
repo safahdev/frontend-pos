@@ -34,7 +34,7 @@ export default function RootLayout({ children }) {
           strategy="beforeInteractive"
         />
       </head>
-      <Toaster position='top-right' />
+      {/* <Toaster position='top-right' /> */}
       <body className={`${jetbrainsMono.variable} font-mono`}>
         {children}
         <Toaster position="top-right" />
