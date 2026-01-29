@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import api from '../../../lib/axios';
 import toast from 'react-hot-toast';
-import { Trash2, Plus, Upload, X, Edit2 } from 'lucide-react';
+import { Trash2, Plus, Upload, X, Edit2, Eye } from 'lucide-react';
 
 export default function ProductsPage() {
     const [products, setProducts] = useState([]);
@@ -11,6 +11,7 @@ export default function ProductsPage() {
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [loading, setLoading] = useState(true);
     const [deleteId, setDeleteId] = useState(null);
+    const [detailProduct, setDetailProduct] = useState(null);
 
     // Form state
     const [name, setName] = useState('');
@@ -164,6 +165,10 @@ export default function ProductsPage() {
         setShowForm(true);
     };
 
+    const handleViewDetail = (product) => {
+        setDetailProduct(product);
+    };
+
     const resetForm = () => {
         setSelectedProduct(null);
         setName('');
@@ -241,6 +246,13 @@ export default function ProductsPage() {
                             {/* Action Buttons - Show on Hover */}
                             <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <button
+                                    onClick={() => handleViewDetail(product)}
+                                    className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 shadow-lg"
+                                    title="Detail"
+                                >
+                                    <Eye size={16} />
+                                </button>
+                                <button
                                     onClick={() => handleEdit(product)}
                                     className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-lg"
                                     title="Edit"
@@ -295,6 +307,103 @@ export default function ProductsPage() {
                     </div>
                 )}
             </div>
+
+            {/* Detail Product Modal */}
+            {detailProduct && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+                        {/* Header */}
+                        <div className="p-6 border-b flex items-center justify-between">
+                            <h2 className="text-xl font-bold text-black">Detail Produk</h2>
+                            <button
+                                onClick={() => setDetailProduct(null)}
+                                className="text-gray-400 hover:text-gray-600"
+                            >
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 overflow-y-auto p-6">
+                            <div className="grid md:grid-cols-2 gap-6">
+                                {/* Left: Image */}
+                                <div>
+                                    <div className="aspect-square bg-gray-200 rounded-lg overflow-hidden">
+                                        {detailProduct.imageUrl ? (
+                                            <img
+                                                src={detailProduct.imageUrl}
+                                                alt={detailProduct.name}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                                <span>No Image</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Right: Details */}
+                                <div className="space-y-4">
+                                    <div>
+                                        <h3 className="text-2xl font-bold text-black mb-2">
+                                            {detailProduct.name}
+                                        </h3>
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+                                                {detailProduct.categoryName || 'Unknown'}
+                                            </span>
+                                            <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                                                detailProduct.stock > 10 
+                                                    ? 'bg-green-100 text-green-700' 
+                                                    : detailProduct.stock > 0 
+                                                    ? 'bg-yellow-100 text-yellow-700' 
+                                                    : 'bg-red-100 text-red-700'
+                                            }`}>
+                                                Stock: {detailProduct.stock}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <p className="text-3xl font-bold text-blue-600">
+                                            Rp {Number(detailProduct.price).toLocaleString('id-ID')}
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        <h4 className="font-semibold text-black mb-2">Deskripsi</h4>
+                                        <p className="text-gray-600 leading-relaxed">
+                                            {detailProduct.description || 'Tidak ada deskripsi untuk produk ini.'}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="border-t p-6">
+                            <div className="flex gap-2 justify-end">
+                                <button
+                                    onClick={() => {
+                                        setDetailProduct(null);
+                                        handleEdit(detailProduct);
+                                    }}
+                                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+                                >
+                                    Edit Produk
+                                </button>
+                                <button
+                                    onClick={() => setDetailProduct(null)}
+                                    className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-semibold"
+                                >
+                                    Tutup
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Form Modal/Sidebar */}
             {showForm && (
