@@ -70,10 +70,22 @@ export default function CashierPage() {
         }
     };
 
-    const fetchTransactionDetail = async (transactionId) => {
+    // ✅ Update untuk menerima itemNotesMap
+    const fetchTransactionDetail = async (transactionId, itemNotesMap = {}) => {
         try {
             const { data } = await api.get(`/api/transactions/${transactionId}`);
-            setTransactionDetail(data.data);
+            
+            // ✅ Inject note ke setiap item berdasarkan productId
+            const detailWithNotes = {
+                ...data.data,
+                transactionDetails: data.data.transactionDetails.map(item => ({
+                    ...item,
+                    note: itemNotesMap[item.productId] || ''
+                }))
+            };
+            
+            console.log('📦 Transaction with notes:', detailWithNotes);
+            setTransactionDetail(detailWithNotes);
             setShowTransactionModal(true);
         } catch (error) {
             toast.error('Gagal memuat detail transaksi');
@@ -91,9 +103,17 @@ export default function CashierPage() {
             <head>
                 <title>Struk</title>
                 <style>
-                body { font-family: monospace; padding: 12px; }
-                h2 { text-align: center; }
+                body { font-family: monospace; padding: 12px; font-size: 12px; }
+                h2 { text-align: center; margin: 10px 0; }
                 .line { border-top: 1px dashed #000; margin: 8px 0; }
+                .item-note { 
+                    font-size: 10px; 
+                    color: #555; 
+                    margin-left: 15px; 
+                    font-style: italic; 
+                    margin-top: 2px;
+                }
+                .item-row { margin-bottom: 8px; }
                 </style>
             </head>
             <body>
@@ -101,7 +121,7 @@ export default function CashierPage() {
                 <div class="line"></div>
                 ${content}
                 <div class="line"></div>
-                <p style="text-align:center">Terima kasih 🙏</p>
+                <p style="text-align:center; margin-top: 10px;">Terima kasih 🙏</p>
             </body>
             </html>`);
 
@@ -110,8 +130,6 @@ export default function CashierPage() {
         win.print();
         win.close();
     };
-
-
 
     const handleCheckout = async () => {
         // Validasi basic
@@ -146,6 +164,16 @@ export default function CashierPage() {
         }
 
         try {
+            // ✅ Simpan mapping productId -> note sementara
+            const itemNotesMap = {};
+            items.forEach(item => {
+                if (item.note) {
+                    itemNotesMap[item.productId] = item.note;
+                }
+            });
+            
+            console.log('📝 Item Notes Map:', itemNotesMap);
+
             const payload = {
                 orderType: orderType,
                 paymentMethod: paymentMethod,
@@ -154,9 +182,10 @@ export default function CashierPage() {
                 items: items.map(item => ({
                     productId: parseInt(item.productId),
                     qty: parseInt(item.qty),
+                    note: item.note || '',
                 })),
             };
-            console.log(payload)
+            console.log('📤 Payload:', payload);
 
             if (orderType === 'dine_in') {
                 payload.tableNumber = parseInt(tableNumber);
@@ -168,7 +197,6 @@ export default function CashierPage() {
 
             const { data } = await api.post('/api/transactions', payload);
 
-
             // ✅ Handle Midtrans
             if (paymentMethod === 'midtrans') {
                 if (!data.snapId) {
@@ -176,7 +204,6 @@ export default function CashierPage() {
                     return;
                 }
 
-                // Cek apakah Snap sudah load
                 if (typeof window.snap === 'undefined') {
                     toast.error('Midtrans belum siap. Mohon refresh halaman.');
                     return;
@@ -188,7 +215,8 @@ export default function CashierPage() {
                         toast.success('Pembayaran berhasil!');
                         clearCart();
                         setShowCheckout(false);
-                        fetchTransactionDetail(data.transactionId)
+                        // ✅ Pass itemNotesMap
+                        fetchTransactionDetail(data.transactionId, itemNotesMap);
                     },
                     onPending: function (result) {
                         console.log('⏳ Payment Pending:', result);
@@ -208,8 +236,9 @@ export default function CashierPage() {
                 clearCart();
                 setPaidAmount('');
                 setShowCheckout(false);
-                selectCategory(selectedCategoryId)
-                fetchTransactionDetail(data.transactionId);
+                selectCategory(selectedCategoryId);
+                // ✅ Pass itemNotesMap
+                fetchTransactionDetail(data.transactionId, itemNotesMap);
             }
         } catch (error) {
             const errorMessage = error.response?.data?.message ||
@@ -249,7 +278,6 @@ export default function CashierPage() {
                         })}
                     </div>
                 </div>
-
 
                 {/* Products Grid */}
                 <div className="flex-1 bg-white p-4 rounded-lg shadow overflow-y-auto">
@@ -399,7 +427,7 @@ export default function CashierPage() {
                                             <div className="flex-1">
                                                 <h4 className="font-medium text-sm text-gray-900">{item.name}</h4>
                                                 {item.note && (
-                                                    <p className="text-xs text-gray-600 mt-1">Note: {item.note}</p>
+                                                    <p className="text-xs text-gray-600 mt-1">📝 {item.note}</p>
                                                 )}
                                             </div>
                                             <button
@@ -486,6 +514,29 @@ export default function CashierPage() {
                                     <label className="block text-sm font-medium mb-2 text-gray-700">
                                         Jumlah Bayar * <span className="text-red-500">(Min: Rp {total.toLocaleString()})</span>
                                     </label>
+                                    
+                                    {/* ✅ Pecahan Uang */}
+                                    <div className="flex gap-2 mb-3">
+                                        <button
+                                            onClick={() => setPaidAmount('20000')}
+                                            className="flex-1 py-2 px-3 bg-emerald-100 text-emerald-700 rounded-lg text-sm font-medium hover:bg-emerald-200 transition-colors"
+                                        >
+                                            20K
+                                        </button>
+                                        <button
+                                            onClick={() => setPaidAmount('50000')}
+                                            className="flex-1 py-2 px-3 bg-emerald-100 text-emerald-700 rounded-lg text-sm font-medium hover:bg-emerald-200 transition-colors"
+                                        >
+                                            50K
+                                        </button>
+                                        <button
+                                            onClick={() => setPaidAmount('100000')}
+                                            className="flex-1 py-2 px-3 bg-emerald-100 text-emerald-700 rounded-lg text-sm font-medium hover:bg-emerald-200 transition-colors"
+                                        >
+                                            100K
+                                        </button>
+                                    </div>
+
                                     <input
                                         type="number"
                                         value={paidAmount}
@@ -617,8 +668,8 @@ export default function CashierPage() {
                 </div>
             )}
 
+            {/* ✅ Transaction Modal */}
             {showTransactionModal && transactionDetail && transactionDetail.paymentStatus === 'paid' && (
-
                 <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
                     <div className="bg-white rounded-lg w-full max-w-lg p-6 shadow-xl">
 
@@ -651,9 +702,17 @@ export default function CashierPage() {
                                 <h3 className="font-semibold mb-2 text-black">Items</h3>
                                 <div className="space-y-2">
                                     {transactionDetail.transactionDetails.map(item => (
-                                        <div key={item.id} className="flex justify-between text-sm text-black">
-                                            <span>{item.productName} × {item.quantity}</span>
-                                            <span>Rp {Number(item.subtotal).toLocaleString()}</span>
+                                        <div key={item.id} className="item-row">
+                                            <div className="flex justify-between text-sm text-black">
+                                                <span>{item.productName} × {item.quantity}</span>
+                                                <span>Rp {Number(item.subtotal).toLocaleString()}</span>
+                                            </div>
+                                            {/* ✅ Tampilkan note per item */}
+                                            {item.note && (
+                                                <div className="item-note text-xs text-gray-600 italic ml-3 mt-1">
+                                                    📝 {item.note}
+                                                </div>
+                                            )}
                                         </div>
                                     ))}
                                 </div>
