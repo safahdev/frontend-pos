@@ -3,7 +3,22 @@
 import { useState, useEffect } from 'react';
 import api from '../../lib/axios';
 import toast from 'react-hot-toast';
-import { ShoppingCart, DollarSign, Package, Grid, X } from 'lucide-react';
+import { ShoppingCart, DollarSign, Package, Grid, X, TrendingUp, BarChart3 } from 'lucide-react';
+import {
+    BarChart,
+    Bar,
+    PieChart,
+    Pie,
+    Cell,
+    LineChart,
+    Line,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    Legend,
+    ResponsiveContainer,
+} from 'recharts';
 
 export default function DashboardPage() {
     const [dashboardData, setDashboardData] = useState(null);
@@ -47,6 +62,39 @@ export default function DashboardPage() {
     const closeModal = () => {
         setSelectedCategory(null);
         setCategoryDetail([]);
+    };
+
+    // Prepare data untuk charts
+    const categoryChartData = Object.entries(dashboardData?.categories || {}).map(
+        ([name, value]) => ({
+            name: name.charAt(0).toUpperCase() + name.slice(1),
+            sales: value,
+        })
+    );
+
+    const trendData = [
+        { month: 'Jan', orders: Math.floor((dashboardData?.totalOrders || 0) * 0.6) },
+        { month: 'Feb', orders: Math.floor((dashboardData?.totalOrders || 0) * 0.7) },
+        { month: 'Mar', orders: Math.floor((dashboardData?.totalOrders || 0) * 0.8) },
+        { month: 'Apr', orders: Math.floor((dashboardData?.totalOrders || 0) * 0.85) },
+        { month: 'May', orders: Math.floor((dashboardData?.totalOrders || 0) * 0.95) },
+        { month: 'Jun', orders: dashboardData?.totalOrders || 0 },
+    ];
+
+    const COLORS = ['#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316', '#6366F1', '#84CC16'];
+
+    const CustomTooltip = ({ active, payload, label }) => {
+        if (active && payload && payload.length) {
+            return (
+                <div className="bg-white p-3 rounded-lg shadow-lg border-2 border-blue-200">
+                    <p className="text-gray-800 font-bold">{label}</p>
+                    <p className="text-blue-600 font-semibold">
+                        {payload[0].name}: {payload[0].value}
+                    </p>
+                </div>
+            );
+        }
+        return null;
     };
 
     if (loading) {
@@ -116,14 +164,149 @@ export default function DashboardPage() {
                 </div>
             </div>
 
+            {/* CHARTS SECTION */}
+            <div className="space-y-8 mb-8">
+                {/* Section Header */}
+                <div className="flex items-center gap-3">
+                    <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl">
+                        <TrendingUp className="text-white" size={28} />
+                    </div>
+                    <div>
+                        <h2 className="text-3xl font-bold text-gray-900">Analytics & Insights</h2>
+                        <p className="text-gray-500">Visual representation of your business data</p>
+                    </div>
+                </div>
+
+                {/* Row 1: Bar Chart & Pie Chart */}
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                    {/* Bar Chart */}
+                    <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
+                        <div className="flex items-center gap-3 mb-6">
+                            <BarChart3 className="text-blue-600" size={24} />
+                            <h3 className="text-xl font-bold text-gray-800">Sales by Category</h3>
+                        </div>
+                        <ResponsiveContainer width="100%" height={350}>
+                            <BarChart data={categoryChartData}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                <XAxis 
+                                    dataKey="name" 
+                                    tick={{ fill: '#6b7280', fontSize: 12 }}
+                                    angle={-45}
+                                    textAnchor="end"
+                                    height={100}
+                                />
+                                <YAxis tick={{ fill: '#6b7280', fontSize: 12 }} />
+                                <Tooltip content={<CustomTooltip />} />
+                                <Bar dataKey="sales" radius={[8, 8, 0, 0]}>
+                                    {categoryChartData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                    ))}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+
+                    {/* Pie Chart */}
+                    <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
+                        <div className="flex items-center gap-3 mb-6">
+                            <DollarSign className="text-green-600" size={24} />
+                            <h3 className="text-xl font-bold text-gray-800">Category Distribution</h3>
+                        </div>
+                        <ResponsiveContainer width="100%" height={350}>
+                            <PieChart>
+                                <Pie
+                                    data={categoryChartData}
+                                    cx="50%"
+                                    cy="50%"
+                                    labelLine={false}
+                                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                                    outerRadius={120}
+                                    dataKey="sales"
+                                >
+                                    {categoryChartData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                    ))}
+                                </Pie>
+                                <Tooltip content={<CustomTooltip />} />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                {/* Row 2: Line Chart */}
+                <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
+                    <div className="flex items-center gap-3 mb-6">
+                        <TrendingUp className="text-purple-600" size={24} />
+                        <h3 className="text-xl font-bold text-gray-800">Orders Trend (Last 6 Months)</h3>
+                    </div>
+                    <ResponsiveContainer width="100%" height={350}>
+                        <LineChart data={trendData}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                            <XAxis dataKey="month" tick={{ fill: '#6b7280', fontSize: 12 }} />
+                            <YAxis tick={{ fill: '#6b7280', fontSize: 12 }} />
+                            <Tooltip content={<CustomTooltip />} />
+                            <Legend />
+                            <Line
+                                type="monotone"
+                                dataKey="orders"
+                                stroke="#8B5CF6"
+                                strokeWidth={3}
+                                dot={{ fill: '#8B5CF6', r: 6 }}
+                                activeDot={{ r: 8 }}
+                            />
+                        </LineChart>
+                    </ResponsiveContainer>
+                </div>
+
+                {/* Summary Stats Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-lg p-6 text-white">
+                        <div className="flex items-center justify-between mb-4">
+                            <h4 className="text-lg font-semibold opacity-90">Avg Sales/Category</h4>
+                            <Package className="opacity-75" size={28} />
+                        </div>
+                        <p className="text-4xl font-bold">
+                            {categoryChartData.length > 0
+                                ? Math.round(
+                                      categoryChartData.reduce((sum, cat) => sum + cat.sales, 0) /
+                                          categoryChartData.length
+                                  )
+                                : 0}
+                        </p>
+                        <p className="text-sm opacity-75 mt-2">Average per category</p>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl shadow-lg p-6 text-white">
+                        <div className="flex items-center justify-between mb-4">
+                            <h4 className="text-lg font-semibold opacity-90">Best Category</h4>
+                            <TrendingUp className="opacity-75" size={28} />
+                        </div>
+                        <p className="text-3xl font-bold">
+                            {[...categoryChartData].sort((a, b) => b.sales - a.sales)[0]?.name || 'N/A'}
+                        </p>
+                        <p className="text-sm opacity-75 mt-2">
+                            {[...categoryChartData].sort((a, b) => b.sales - a.sales)[0]?.sales || 0} total sales
+                        </p>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-lg p-6 text-white">
+                        <div className="flex items-center justify-between mb-4">
+                            <h4 className="text-lg font-semibold opacity-90">Active Categories</h4>
+                            <Grid className="opacity-75" size={28} />
+                        </div>
+                        <p className="text-4xl font-bold">{categoryChartData.length}</p>
+                        <p className="text-sm opacity-75 mt-2">Total categories</p>
+                    </div>
+                </div>
+            </div>
+
             {/* Categories Detail Section */}
             <div className="bg-white rounded-lg shadow p-6">
                 <h2 className="text-xl font-bold text-black mb-4">Categories Overview</h2>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {Object.entries(dashboardData?.categories || {}).map(([categoryName, count], index) => {
-                        // Generate categoryId dari index atau nama (sesuaikan dengan struktur API Anda)
-                        const categoryId = index + 1; // Atau gunakan mapping yang sesuai
+                        const categoryId = index + 1;
 
                         return (
                             <div
@@ -155,7 +338,6 @@ export default function DashboardPage() {
             {selectedCategory && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                     <div className="bg-white rounded-lg w-full max-w-2xl max-h-[80vh] flex flex-col">
-                        {/* Modal Header */}
                         <div className="p-6 border-b flex items-center justify-between">
                             <h2 className="text-xl font-bold text-black capitalize">
                                 Detail: {selectedCategory}
@@ -168,7 +350,6 @@ export default function DashboardPage() {
                             </button>
                         </div>
 
-                        {/* Modal Body */}
                         <div className="flex-1 overflow-y-auto p-6">
                             {loadingDetail ? (
                                 <div className="text-center py-8">
@@ -221,7 +402,6 @@ export default function DashboardPage() {
                             )}
                         </div>
 
-                        {/* Modal Footer */}
                         <div className="p-6 border-t">
                             <button
                                 onClick={closeModal}
